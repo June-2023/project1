@@ -4,35 +4,132 @@ output: github_document
 date: "2023-06-23"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+# Required packages  
+
+ 1 library(httr): used for Working with URLs and HTTP
+ 2 library(jsonlite):  used for working with JSON data
+ 3 library(dplyr): used for data manipulation and summarization
+ 4 library(tidyr):  tidying and reshaping data
+ 5 library(ggplot2):data visualization and creating plots
+
+
+
+# Write function(s) to contact API and return well-formatted data frame
+
+```{r func1}
+library(httr)
+library(jsonlite)
+library(dplyr)
+
+# Function to retrieve recipe data from Spoonacular API
+getRecipesByNutrients <- function(apiKey, maxCalories, maxCarbs, maxFatt,maxAlcohol,maxCaffeine,maxCalcium) {
+  # API base URL
+  base_url <- "https://api.spoonacular.com/recipes/findByNutrients"
+  
+  # Convert the nutrient values to lowercase and map them to the corresponding abbreviations
+  nutrients <- c("calories" = "maxCalories", "carbs" = "maxCarbs", "fat" = "maxFat", "protein" = "maxProtein","alcohol" = "maxAlcohol", "caffeine" = "maxCaffeine","calcium"="maxCalcium")
+  nutrientParams <- lapply(nutrients, function(x) {
+    if (tolower(x) %in% c("calories", "carbs", "fat", "alcohol", "caffeine","calcium")) {
+      x <- nutrients[tolower(x)]
+    }
+    return(x)
+  })
+  
+  # Set query parameters
+  params <- list(
+    apiKey = apiKey,
+    number = number,
+    maxCalories = maxCalories,
+    maxAlcohol = maxAlcohol,
+    maxCarbs = maxCarbs,
+    maxCaffeine = maxCaffeine,
+    maxFat = maxFat,
+    maxCalcium = maxCalcium,
+    )
+  
+  # Construct API request URL
+  url <- paste0(base_url, "/", endpoint)
+  
+  # Make GET request to the API
+  response <- GET(url, query = params)
+  
+  # Check if the request was successful
+  if (http_status(response)$category == "Success") {
+    # Parse the response content
+    recipeData <- content(response, as = "text")
+    parsedData <- fromJSON(recipeData, flatten = TRUE)
+    
+    # Create a data frame from the parsed data
+    df <- as.data.frame(parsedData)
+    return(df)
+  } else {
+    stop("Error: API request failed.")
+  }
+}
+
 ```
 
-# render
+
+# Basic exploratory data analysis  
 
 
-```{r der1, eval = FALSE}
-rmarkdown::render("D:/software/installed/git/repository/project1/project1try.Rmd", output_format = "github_document", output_file = "D:/software/installed/git/repository/project1/README.md")
+```{r dataana1}
+library(httr)
+library(jsonlite)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 
+
+# Function to perform exploratory data analysis (EDA)
+
+  recipeData <- getRecipesByNutrients(apiKey= "6b092ffb43d4498c8999b635f46106a3", maxCalories, maxCarbs)
+  
+  # Create one new variable that is a function of the variables from a data set
+  recipeData$caloriesPerCarb <- recipeData$calories / recipeData$carbs
+  
+  # Create contingency table
+  contingencyTable <- table(recipeData$cuisine, recipeData$vegetarian)
+  
+  # create numerical summaries for some quantitative variables：calories and protein 
+   
+  summaryByCuisine <- recipeData %>%
+    group_by(cuisine) %>%
+    summarise(meanCalories = mean(calories), meanProtein = mean(protein))
+  
+  # Create at least five plots utilizing coloring
+  # Bar plot: 
+  barPlot <- ggplot(recipeData, aes(x = cuisine, fill = vegetarian)) +
+    geom_bar() +
+    labs(x = "Cuisine", y = "Count", title = "Recipe Count by Cuisine") +
+    theme(legend.title = element_blank())
+  barPlot
+  
+  # Histogram
+  histogram <- ggplot(recipeData, aes(x = calories)) +
+    geom_histogram(binwidth = 100, fill = "green") +
+    labs(x = "Calories", y = "Frequency", title = "Calorie Distribution")
+  histogram
+  
+  # Box plot
+  boxPlot <- ggplot(recipeData, aes(x = cuisine, y = protein, fill = vegetarian)) +
+    geom_boxplot() +
+    labs(x = "Cuisine", y = "Protein", title = "Protein Content by Cuisine") +
+    theme(legend.title = element_blank())
+  boxPlot
+  
+  # Scatter plot: Calories per Carb
+  scatterPlot <- ggplot(recipeData, aes(x = carbs, y = calories, color = vegetarian)) +
+    geom_point() +
+    labs(x = "Carbs", y = "Calories", title = "Calories per Carb") +
+    theme(legend.title = element_blank())
+  scatterPlot
+  
+ 
 ```
 
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
